@@ -1,0 +1,46 @@
+# create the Interacts With edges then remove any self loops
+MATCH (u1:User)-[:CreateChat]->(:ChatItem)-[:Mentioned]->(u2:User)
+CREATE (u1)-[:InteractsWith]->(u2)
+
+MATCH (u1:User)-[:CreateChat]->(:ChatItem)-[:ResponseTo]->(:ChatItem)<-[:CreateChat]-(u2:User)
+CREATE (u1)-[:InteractsWith]->(u2)
+
+MATCH (u)-[r:InteractsWith]->(u) DELETE r
+
+# (could also try it with the timestamp)
+
+
+# view and set the degree
+MATCH (u:User)-[w:InteractsWith]-(v:User)
+WITH u, count(distinct w) as degree
+RETURN u, degree LIMIT 100
+
+MATCH (u:User)-[w:InteractsWith]-(v:User)
+WITH u, count(distinct w) as degree
+SET u.degreeInteracts = degree
+RETURN u.id, u.degreeInteracts
+
+# Get the list of neighbours and the number of neighbours
+WITH 209 AS ident
+MATCH (u:User)-[:InteractsWith]-(v:User) WHERE u.id = ident
+WITH collect(distinct v.id) as neighbours, count(distinct v.id) AS numNeighbours
+RETURN neighbours, numNeighbours
+
+# Get the list of neighbours
+# count the number of neighbours that are connected
+# count the total number of possible connections
+# calculate the clustering coef
+WITH 209 AS ident
+MATCH (u:User)-[:InteractsWith]-(v:User) WHERE u.id = ident
+WITH collect(distinct v.id) as neighbours,
+count(distinct v.id) AS numNeighbours,
+ident AS ident
+MATCH (w:User), (y:User)
+WHERE w.id IN neighbours AND w.id <> ident
+AND y.id IN neighbours AND y.id <> ident
+WITH sum(CASE
+WHEN (w)-[:InteractsWith]-(y) THEN 1
+ELSE 0 END) AS Neighbourhood,
+numNeighbours * (numNeighbours - 1) AS MaximalNeighbourhood,
+ident AS UserId
+RETURN UserId, Neighbourhood, MaximalNeighbourhood, toFloat(Neighbourhood) / toFloat(MaximalNeighbourhood) AS ClusteringCoef

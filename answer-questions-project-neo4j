@@ -1,0 +1,56 @@
+
+# Example Screenshots
+MATCH (:User)-[r]->(:TeamChatSession)-[s:OwnedBy]->(:Team)
+RETURN r,s LIMIT 10
+
+MATCH (c1:ChatItem)-[:ResponseTo]->(c2:ChatItem)-[:PartOf]->(s:TeamChatSession)<-[CreatesSession]-(u:User)
+RETURN c1, c2, s, u LIMIT 10
+
+# Longest Chain
+MATCH p=(i)-[:ResponseTo*]->(j) RETURN p,length(p) ORDER BY length(p) DESC LIMIT 1
+
+# 10 Nodes, 9 Edges in longest chat chain
+
+# users in the longest chain
+MATCH p=(i:ChatItem)-[:ResponseTo*]->(j:ChatItem)
+WITH max(length(p)) AS maxChain
+MATCH p=(i:ChatItem)-[:ResponseTo*]->(j:ChatItem) WHERE length(p) = maxChain
+WITH extract(n in nodes(p)|n.id) AS ChatItems
+MATCH (u:User)-[c:CreateChat]->(k:ChatItem) WHERE k.id IN ChatItems
+RETURN distinct(u), count(distinct(u)),c
+
+# alternative
+MATCH p=(c)-[:ResponseTo*]->(c1)
+WITH p as p, length(p) as len_longest_chat
+ORDER BY length(p) DESC LIMIT 1
+MATCH (ci)<-[r:CreatesChat]-(u)
+WHERE ci in nodes(p)
+RETURN length(nodes(p)) as chats_longest_chain, COUNT(distinct(u)) as
+users_in_longest_chat
+
+# 5 users in the longest chat
+
+# chattiest users
+MATCH (u:User)-[:CreateChat]->(i:ChatItem)
+RETURN u, count(u) ORDER BY count(u) DESC LIMIT 10
+
+# chattiest teams
+MATCH (i:ChatItem)-[:PartOf]->(c:TeamChatSession)-[:OwnedBy]->(t:Team)
+RETURN t, count(t) ORDER BY count(t) DESC LIMIT 10
+
+# the chattiest users have > 103 ChatItems
+# the chattiest teams have > 735 ChatItems
+
+# are the chattiest users members of the chattiest teams
+
+MATCH (i:ChatItem)-[:PartOf]->(c:TeamChatSession)-[:OwnedBy]->(t:Team)
+WITH t AS Teams, count(t) AS numTeamChats WHERE numTeamChats > 735 // smaller than the 10th highest team
+MATCH (v:User)-[:CreateChat]->(ChatItem)-[:PartOf]->(:TeamChatSession)-[:OwnedBy]->(w:Team) WHERE w.id IN Teams.id
+WITH collect(distinct v.id) AS Users
+MATCH (u:User)-[:CreateChat]->(i:ChatItem) WHERE u.id IN Users
+WITH u AS FinalUsers, count(u) AS numUserChats WHERE numUserChats > 103 // smaller than the 10th highest user
+WITH collect(distinct FinalUsers.id) AS FinalUsersIds
+MATCH (v:User)-[:CreateChat]->(ChatItem)-[:PartOf]->(:TeamChatSession)-[:OwnedBy]->(w:Team) WHERE v.id IN FinalUsersIds
+RETURN v, w
+
+# user 999, member of 52 is returned
