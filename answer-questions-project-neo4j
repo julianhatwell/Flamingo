@@ -34,9 +34,15 @@ users_in_longest_chat
 MATCH (u:User)-[:CreateChat]->(i:ChatItem)
 RETURN u, count(u) ORDER BY count(u) DESC LIMIT 10
 
+MATCH (u:User)-[:CreateChat]->(i:ChatItem)
+RETURN u.id AS UserId, count(u) AS numChatItems ORDER BY count(u) DESC
+
 # chattiest teams
 MATCH (i:ChatItem)-[:PartOf]->(c:TeamChatSession)-[:OwnedBy]->(t:Team)
 RETURN t, count(t) ORDER BY count(t) DESC LIMIT 10
+
+MATCH (i:ChatItem)-[:PartOf]->(c:TeamChatSession)-[:OwnedBy]->(t:Team)
+RETURN t.id AS TeamId, count(t) AS numChatItems ORDER BY count(t) DESC
 
 # the chattiest users have > 103 ChatItems
 # the chattiest teams have > 735 ChatItems
@@ -45,7 +51,7 @@ RETURN t, count(t) ORDER BY count(t) DESC LIMIT 10
 
 MATCH (i:ChatItem)-[:PartOf]->(c:TeamChatSession)-[:OwnedBy]->(t:Team)
 WITH t AS Teams, count(t) AS numTeamChats WHERE numTeamChats > 735 // smaller than the 10th highest team
-MATCH (v:User)-[:CreateChat]->(ChatItem)-[:PartOf]->(:TeamChatSession)-[:OwnedBy]->(w:Team) WHERE w.id IN Teams.id
+MATCH (v:User)-[:CreateChat]->(:ChatItem)-[:PartOf]->(:TeamChatSession)-[:OwnedBy]->(w:Team) WHERE w.id IN Teams.id
 WITH collect(distinct v.id) AS Users
 MATCH (u:User)-[:CreateChat]->(i:ChatItem) WHERE u.id IN Users
 WITH u AS FinalUsers, count(u) AS numUserChats WHERE numUserChats > 103 // smaller than the 10th highest user
